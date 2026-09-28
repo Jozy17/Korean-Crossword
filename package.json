@@ -1,0 +1,10 @@
+{
+  "name": "korean-crossword",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Korean vocabulary crossword puzzles by TOPIK level and topic.",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test tests/*.test.js"
+  }
+}

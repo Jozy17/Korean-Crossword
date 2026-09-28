@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>한글 Crossword</title>
+  <meta name="description" content="Korean vocabulary crossword puzzles by TOPIK level and topic.">
+  <meta name="theme-color" content="#1f5f8b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="한글 Crossword">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn" id="backBtn" aria-label="Back" hidden>←</button>
+    <h1 class="brand" id="brand">한글 <span>Crossword</span></h1>
+    <div class="game-meta" id="gameMeta" hidden>
+      <span class="timer" id="timer">0:00</span>
+      <span class="score" id="scoreLive">0점</span>
+    </div>
+    <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙︎</button>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section class="screen" id="screen-home">
+      <div class="card continue" id="continueCard" hidden>
+        <div>
+          <strong>Puzzle in progress</strong>
+          <div class="muted" id="continueInfo"></div>
+        </div>
+        <button class="btn primary" id="continueBtn">Continue</button>
+      </div>
+
+      <h2 class="section-title">Level <span class="ko">난이도</span></h2>
+      <div class="levels" id="levelPicker"></div>
+
+      <h2 class="section-title">Topic <span class="ko">주제</span></h2>
+      <div class="chips" id="categoryPicker"></div>
+
+      <h2 class="section-title">Puzzle size <span class="ko">크기</span></h2>
+      <div class="segmented" id="sizePicker">
+        <button data-size="small">Small<small>6 words</small></button>
+        <button data-size="medium">Medium<small>9 words</small></button>
+        <button data-size="large">Large<small>12 words</small></button>
+      </div>
+
+      <label class="switch-row" id="easierRow">
+        <input type="checkbox" id="includeEasier">
+        <span>Also use easier words from this topic</span>
+      </label>
+
+      <button class="btn primary big" id="startBtn">새 퍼즐 · New puzzle</button>
+
+      <nav class="home-links">
+        <button class="link-card" data-go="review">
+          <span class="link-icon">⭐</span>
+          <span><strong>Review</strong><small id="reviewCount">Words to practice</small></span>
+        </button>
+        <button class="link-card" data-go="words">
+          <span class="link-icon">📖</span>
+          <span><strong>Words</strong><small>Browse, add &amp; import</small></span>
+        </button>
+      </nav>
+      <p class="stats-line muted" id="statsLine"></p>
+    </section>
+
+    <!-- GAME -->
+    <section class="screen" id="screen-game" hidden>
+      <div class="game-head">
+        <div class="game-title" id="gameTitle"></div>
+        <div class="lang-toggle" role="group" aria-label="Hint language">
+          <button data-lang="en" id="langEn">EN</button>
+          <button data-lang="ko" id="langKo">한</button>
+        </div>
+      </div>
+
+      <div class="grid-wrap"><div class="grid" id="grid"></div></div>
+
+      <div class="clue-bar" id="clueBar">
+        <button class="icon-btn nav" id="prevClue" aria-label="Previous clue">‹</button>
+        <div class="clue-main">
+          <div class="clue-label" id="clueLabel"></div>
+          <div class="clue-text" id="clueText"></div>
+          <div class="clue-roman muted" id="clueRoman" hidden></div>
+          <div class="clue-cho" id="clueCho" hidden></div>
+        </div>
+        <button class="icon-btn nav" id="nextClue" aria-label="Next clue">›</button>
+      </div>
+
+      <div class="answer-row">
+        <input id="answer" type="text" lang="ko" inputmode="text" enterkeyhint="next"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               placeholder="여기에 입력 · type here">
+        <button class="btn" id="flipClue" title="Switch this clue's language">EN⇄한</button>
+        <button class="btn" id="speakClue" title="Read the clue aloud" aria-label="Read the clue aloud">🔊</button>
+      </div>
+
+      <div class="tools">
+        <button class="tool" id="hintCho"><b>ㅊㅅ</b><small>초성 hint</small></button>
+        <button class="tool" id="revealLetter"><b>가</b><small>Reveal 1</small></button>
+        <button class="tool" id="checkWord"><b>✓</b><small>Check word</small></button>
+        <button class="tool" id="revealWord"><b>👁</b><small>Reveal word</small></button>
+        <button class="tool" id="checkAll"><b>✓✓</b><small>Check all</small></button>
+      </div>
+
+      <div class="clue-lists">
+        <div>
+          <h3>가로 <span>Across</span></h3>
+          <ol class="clue-list" id="acrossList"></ol>
+        </div>
+        <div>
+          <h3>세로 <span>Down</span></h3>
+          <ol class="clue-list" id="downList"></ol>
+        </div>
+      </div>
+      <div class="game-footer">
+        <button class="btn subtle" id="restartBtn">Clear grid</button>
+        <button class="btn subtle" id="newFromGameBtn">New puzzle</button>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section class="screen" id="screen-review" hidden>
+      <div class="stat-tiles" id="statTiles"></div>
+      <h2 class="section-title">Words to review <span class="ko">복습할 단어</span></h2>
+      <p class="muted small">Words you revealed or got wrong land here. Solve one without help twice and it’s cleared.</p>
+      <button class="btn primary" id="practiceMissedBtn">Practice these words</button>
+      <ul class="word-list" id="missedList"></ul>
+      <h2 class="section-title">Recently solved <span class="ko">최근 푼 단어</span></h2>
+      <ul class="word-list" id="recentList"></ul>
+    </section>
+
+    <!-- WORDS -->
+    <section class="screen" id="screen-words" hidden>
+      <div class="tabs" role="tablist">
+        <button data-tab="browse" class="active">Browse</button>
+        <button data-tab="add">Add</button>
+        <button data-tab="import">Import</button>
+        <button data-tab="mine">Mine <span id="mineCount"></span></button>
+      </div>
+
+      <div class="tab" id="tab-browse">
+        <div class="filters">
+          <input type="search" id="browseSearch" placeholder="Search 검색 (Korean or English)">
+          <select id="browseLevel"></select>
+          <select id="browseCat"></select>
+        </div>
+        <p class="muted small" id="browseCount"></p>
+        <ul class="word-list" id="browseList"></ul>
+      </div>
+
+      <div class="tab" id="tab-add" hidden>
+        <form id="addForm" class="form">
+          <input type="hidden" id="editKey">
+          <label>Korean word <span class="req">*</span>
+            <input id="fKo" lang="ko" required placeholder="예: 사과" autocomplete="off">
+          </label>
+          <label>English meaning <span class="req">*</span>
+            <input id="fEn" required placeholder="e.g. apple" autocomplete="off">
+          </label>
+          <label>Level
+            <select id="fLevel"></select>
+          </label>
+          <fieldset>
+            <legend>Topics</legend>
+            <div class="chips small" id="fCats"></div>
+            <input id="fNewCat" placeholder="New topic name (optional)">
+          </fieldset>
+          <label>Korean definition (clue) <span class="muted">optional</span>
+            <input id="fDef" lang="ko" placeholder="예: 빨갛고 둥근 과일" autocomplete="off">
+          </label>
+          <label>Example sentence <span class="muted">optional, put the answer in {braces}</span>
+            <input id="fEx" lang="ko" placeholder="예: 아침에 {사과}를 먹었어요." autocomplete="off">
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" id="saveWordBtn">Save word</button>
+            <button type="button" class="btn subtle" id="cancelEditBtn" hidden>Cancel edit</button>
+          </div>
+          <p class="form-msg" id="addMsg"></p>
+        </form>
+      </div>
+
+      <div class="tab" id="tab-import" hidden>
+        <p class="small">Paste a list or choose a file (.csv, .tsv, .txt, .json). One word per line:</p>
+        <pre class="format">korean, english, level, topics, Korean definition, example
+사과, apple, 1, food, 빨갛고 둥근 과일, 아침에 {사과}를 먹었어요.
+공항 - airport
+환율	exchange rate	TOPIK 5	shopping</pre>
+        <details class="small">
+          <summary>Format details</summary>
+          <ul>
+            <li>Only the Korean word and English meaning are required. Commas, tabs, <code>|</code>, or <code>word - meaning</code> all work.</li>
+            <li>Level can be <code>1/2/3</code>, <code>초급/중급/고급</code>, <code>A/B/C</code>, or <code>TOPIK 1–6</code>.</li>
+            <li>Separate several topics with <code>;</code>. New topic names become new topics.</li>
+            <li>Spaces inside a Korean word are removed (생일 파티 → 생일파티). Words need 2–8 syllables.</li>
+            <li>JSON: an array of objects like <code>{"korean":"사과","english":"apple","level":1}</code>.</li>
+          </ul>
+        </details>
+        <textarea id="importText" rows="8" placeholder="Paste words here…" lang="ko"></textarea>
+        <div class="import-row">
+          <label class="btn file-btn">Choose file<input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,text/*,application/json" hidden></label>
+          <label>Default level <select id="importLevel"></select></label>
+          <label>Default topic <select id="importCat"></select></label>
+        </div>
+        <button class="btn" id="previewImportBtn">Preview</button>
+        <div id="importPreview"></div>
+      </div>
+
+      <div class="tab" id="tab-mine" hidden>
+        <div class="row-actions">
+          <button class="btn" id="exportBtn">Export CSV</button>
+          <button class="btn danger subtle" id="deleteAllBtn">Delete all</button>
+        </div>
+        <ul class="word-list" id="mineList"></ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- Settings sheet -->
+  <dialog id="settingsDialog" class="sheet">
+    <form method="dialog">
+      <h2>Settings <span class="ko">설정</span></h2>
+      <label class="field">Default hint language
+        <select id="sHintLang">
+          <option value="en">English</option>
+          <option value="ko">Korean 한국어</option>
+        </select>
+      </label>
+      <label class="field">Korean clue style
+        <select id="sKoStyle">
+          <option value="mix">Mix of definitions &amp; sentences</option>
+          <option value="def">Definitions (뜻풀이)</option>
+          <option value="ex">Fill-in-the-blank sentences (예문)</option>
+        </select>
+      </label>
+      <label class="switch-row"><input type="checkbox" id="sRoman"> <span>Show romanization under Korean clues</span></label>
+      <label class="switch-row"><input type="checkbox" id="sAutoCheck"> <span>Turn words green as soon as they’re right</span></label>
+      <label class="switch-row"><input type="checkbox" id="sAutoSpeak"> <span>Say each word aloud when solved</span></label>
+      <label class="field">Speech speed
+        <input type="range" id="sRate" min="0.5" max="1.2" step="0.1">
+      </label>
+      <label class="field">Theme
+        <select id="sTheme">
+          <option value="auto">Match device</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <div class="sheet-actions">
+        <button type="button" class="btn danger subtle" id="resetProgressBtn">Reset progress</button>
+        <button class="btn primary" value="close">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Finished dialog -->
+  <dialog id="doneDialog" class="sheet">
+    <div class="done-head">
+      <div class="done-emoji">🎉</div>
+      <h2>잘했어요! <span>Puzzle complete</span></h2>
+      <div class="done-stats" id="doneStats"></div>
+    </div>
+    <ul class="word-list compact" id="doneWords"></ul>
+    <div class="sheet-actions">
+      <button class="btn" id="doneHomeBtn">Home</button>
+      <button class="btn primary" id="doneNextBtn">Next puzzle</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/hangul.js"></script>
+  <script src="js/data/words.js"></script>
+  <script src="js/wordbank.js"></script>
+  <script src="js/generator.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
