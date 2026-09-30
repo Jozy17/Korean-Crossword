@@ -15,7 +15,7 @@ A Korean vocabulary crossword game for phones and computers. Every square holds 
 - **Romanization** (Revised Romanization, approximate) under Korean clues and in word lists.
 - **Review list:** words you reveal or get wrong are saved. Solve one twice without help and it's cleared. There's also a "Practice these words" puzzle.
 - **Timer, score and daily streak.**
-- **Your own words:** add them one at a time, or import a list (CSV, TSV, TXT or JSON, pasted or from a file). You can export them as CSV.
+- **Your own words:** add them one at a time, or import them from Anki decks (`.apkg`), Duolingo/Duoninja exports, or any CSV, TSV, TXT or JSON list. You can export them as CSV.
 - **Works offline** and can be added to the iPhone home screen.
 
 Puzzles are generated fresh every time. Words you've seen less, and words on your review list, come up more often. Korean words share syllables less often than English words share letters. So a topic puzzle may include a few **bonus** words from another topic, at the same or an easier level, to connect the grid.
@@ -53,6 +53,22 @@ korean, english, level, topics, Korean definition, example
 - In example sentences, put the answer in `{braces}`. If the word appears as written, it's marked automatically.
 - If you import a word that's already built in, your meaning and level are used and the built-in clues are kept.
 
+### From Anki
+
+Choose the deck's `.apkg` file on the Import tab. It can be a shared deck downloaded from AnkiWeb, or one exported with *File → Export → Anki Deck Package* (AnkiMobile: *Export* on the deck). Both the older and the Anki 2.1.50+ package formats work, as do *Notes in Plain Text* exports.
+
+- The app finds the Korean word and the English meaning on each card, whichever side they're on. It uses field names like *Korean*/*English* when the note type has them.
+- A longer Korean field that uses the word (such as an example sentence) becomes a fill-in-the-blank clue.
+- HTML, audio tags and romanization in parentheses are removed.
+- Cards with full sentences or one-syllable words are skipped, and the preview lists them.
+- Media files aren't imported.
+
+The deck reader libraries (sql.js, fflate, fzstd, all MIT-licensed, in `js/vendor/`) load only when you pick a deck file.
+
+### From Duolingo (Duoninja and similar)
+
+Export your learned words as CSV (Duoninja, DuoVocab and similar tools can do this), then choose the file on the Import tab. Header rows such as `Word, Translation` or `English, Korean` are recognized in any column order.
+
 Everything you add is stored in your browser (localStorage) on that device. Use **Export CSV** to back it up or move it to another device.
 
 ## Word bank
@@ -68,7 +84,7 @@ korean|english|categories|Korean definition|example with {answer}
 ## Development
 
 ```sh
-npm test   # checks romanization, the word bank, import parsing and the grid generator
+npm test   # romanization, word bank, list and Anki import, grid generator
 ```
 
 | File | Purpose |
@@ -76,6 +92,8 @@ npm test   # checks romanization, the word bank, import parsing and the grid gen
 | `js/data/words.js` | Built-in word bank, topics, levels |
 | `js/hangul.js` | Syllable helpers, 초성, romanization |
 | `js/wordbank.js` | Word parsing, list import/export |
+| `js/anki.js` | Reads Anki `.apkg` / `.colpkg` decks |
+| `tests/fixtures/` | Small test decks (`make_decks.py` rebuilds them) |
 | `js/generator.js` | Crossword layout generator |
 | `js/app.js` | UI and game logic |
 | `sw.js`, `manifest.webmanifest` | Offline support, home-screen install |

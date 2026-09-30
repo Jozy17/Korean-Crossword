@@ -1,5 +1,5 @@
 /* Offline cache so the app works without a connection once installed. */
-var CACHE = 'kc-v1';
+var CACHE = 'kc-v2';
 var FILES = [
   './',
   'index.html',
@@ -9,6 +9,7 @@ var FILES = [
   'js/wordbank.js',
   'js/generator.js',
   'js/storage.js',
+  'js/anki.js',
   'js/app.js',
   'manifest.webmanifest',
   'icons/icon-192.png',

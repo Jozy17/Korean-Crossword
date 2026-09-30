@@ -904,6 +904,8 @@
   }
 
   var pendingImport = null;
+  var deckNotes = null; // notes read from an Anki deck, re-parsed when the defaults change
+  var deckInfo = '';
   function renderImportForm() {
     if (!$('importLevel').options.length) {
       $('importLevel').innerHTML = levelOptions(false);
@@ -914,52 +916,94 @@
     $('importCat').value = prev || '';
   }
 
-  function previewImport() {
-    var text = $('importText').value;
-    if (!text.trim()) { $('importPreview').innerHTML = '<p class="form-msg err">Paste some words or choose a file first.</p>'; return; }
+  function importDefaults() {
     var cat = $('importCat').value;
-    var res = WB.parseImport(text, { level: Number($('importLevel').value) || 1, cats: cat ? [cat] : [] });
+    return { level: Number($('importLevel').value) || 1, cats: cat ? [cat] : [] };
+  }
+
+  // Words we already have keep their level (unless the list gives one), clues and topics.
+  function mergeWithExisting(words) {
     var existing = {};
     allWords().forEach(function (w) { existing[w.ko] = w; });
-    var fresh = res.words.filter(function (w) { return !existing[w.ko] || existing[w.ko].custom; });
-    var dupBuiltin = res.words.length - fresh.length;
-    pendingImport = res.words;
-    var html = '<p class="small"><strong>' + res.words.length + '</strong> word' + (res.words.length === 1 ? '' : 's') + ' ready' +
-      (dupBuiltin ? ' (' + dupBuiltin + ' already built in; your meaning and level are used, and built-in clues are kept)' : '') + '.' +
-      (res.skipped.length ? ' <strong>' + res.skipped.length + '</strong> line' + (res.skipped.length === 1 ? '' : 's') + ' skipped.' : '') + '</p>';
-    if (res.words.length) {
-      html += '<ul class="word-list compact">' + res.words.slice(0, 8).map(function (w) { return wordRow(w, {}); }).join('') +
-        (res.words.length > 8 ? '<li class="empty">…and ' + (res.words.length - 8) + ' more</li>' : '') + '</ul>' +
-        '<button class="btn primary" id="confirmImportBtn">Import ' + res.words.length + ' word' + (res.words.length === 1 ? '' : 's') + '</button>';
+    return words.map(function (w) {
+      var old = existing[w.ko];
+      var out = Object.assign({}, w);
+      delete out.levelGiven;
+      if (!old) return out;
+      out.known = true;
+      if (!w.levelGiven) out.level = old.level;
+      out.cats = w.cats.length ? w.cats.concat((old.cats || []).filter(function (c) { return w.cats.indexOf(c) < 0; })) : (old.cats || []);
+      out.def = w.def || old.def || '';
+      out.ex = w.ex || old.ex || '';
+      return out;
+    });
+  }
+
+  function previewImport() {
+    var text = $('importText').value;
+    var res;
+    if (deckNotes && !text.trim()) {
+      res = WB.parseNotes(deckNotes, importDefaults());
+    } else if (text.trim()) {
+      deckNotes = null;
+      deckInfo = '';
+      res = WB.parseImport(text, importDefaults());
+    } else {
+      $('importPreview').innerHTML = '<p class="form-msg err">Paste some words or choose a file first.</p>';
+      return;
+    }
+    showImportPreview(res);
+  }
+
+  function showImportPreview(res) {
+    var words = mergeWithExisting(res.words);
+    var known = words.filter(function (w) { return w.known; }).length;
+    pendingImport = words;
+    var unit = deckNotes ? 'card' : 'line';
+    var html = (deckInfo ? '<p class="small">' + esc(deckInfo) + '</p>' : '') +
+      '<p class="small"><strong>' + words.length + '</strong> word' + (words.length === 1 ? '' : 's') + ' ready' +
+      (known ? ' (' + known + ' already in the word bank; their clues are kept)' : '') + '.' +
+      (res.skipped.length ? ' <strong>' + res.skipped.length + '</strong> ' + unit + (res.skipped.length === 1 ? '' : 's') + ' skipped.' : '') + '</p>';
+    if (words.length) {
+      html += '<ul class="word-list compact">' + words.slice(0, 8).map(function (w) { return wordRow(w, {}); }).join('') +
+        (words.length > 8 ? '<li class="empty">…and ' + (words.length - 8) + ' more</li>' : '') + '</ul>' +
+        '<button class="btn primary" id="confirmImportBtn">Import ' + words.length + ' word' + (words.length === 1 ? '' : 's') + '</button>';
     }
     if (res.skipped.length) {
-      html += '<details class="skipped" open><summary>Skipped lines</summary><ul>' + res.skipped.map(function (s) {
-        return '<li>Line ' + s.line + ': ' + esc(s.reason) + (s.text ? ' — <code>' + esc(s.text.slice(0, 60)) + '</code>' : '') + '</li>';
-      }).join('') + '</ul></details>';
+      html += '<details class="skipped"' + (res.skipped.length <= 20 ? ' open' : '') + '><summary>Skipped ' + unit + 's</summary><ul>' +
+        res.skipped.slice(0, 300).map(function (s) {
+          return '<li>' + (unit === 'card' ? 'Card ' : 'Line ') + s.line + ': ' + esc(s.reason) + (s.text ? ' — <code>' + esc(s.text.slice(0, 60)) + '</code>' : '') + '</li>';
+        }).join('') + '</ul></details>';
     }
     $('importPreview').innerHTML = html;
   }
 
+  function readDeckFile(file) {
+    $('importText').value = '';
+    $('importPreview').innerHTML = '<p class="small">Reading ' + esc(file.name) + '…</p>';
+    file.arrayBuffer().then(function (buf) {
+      return KC.anki.read(buf);
+    }).then(function (deck) {
+      deckNotes = deck.notes;
+      deckInfo = file.name + ': ' + deck.notes.length + ' cards' + (deck.decks.length ? ' from ' + deck.decks.slice(0, 3).join(', ') + (deck.decks.length > 3 ? '…' : '') : '');
+      previewImport();
+    }).catch(function (err) {
+      deckNotes = null;
+      $('importPreview').innerHTML = '<p class="form-msg err">' + esc(err.message || String(err)) + '</p>';
+    });
+  }
+
   function confirmImport() {
     if (!pendingImport || !pendingImport.length) return;
-    var existing = {};
-    allWords().forEach(function (w) { existing[w.ko] = w; });
-    // Keep clues and topics from a word we already have when the import leaves them blank.
-    var merged = pendingImport.map(function (w) {
-      var old = existing[w.ko];
-      if (!old) return w;
-      return Object.assign({}, w, {
-        cats: w.cats.length ? w.cats.concat((old.cats || []).filter(function (c) { return w.cats.indexOf(c) < 0; })) : (old.cats || []),
-        def: w.def || old.def || '',
-        ex: w.ex || old.ex || ''
-      });
-    });
+    var words = pendingImport.map(function (w) { var o = Object.assign({}, w); delete o.known; return o; });
     var keys = {};
-    merged.forEach(function (w) { keys[w.ko] = true; });
-    custom = custom.filter(function (w) { return !keys[w.ko]; }).concat(merged);
+    words.forEach(function (w) { keys[w.ko] = true; });
+    custom = custom.filter(function (w) { return !keys[w.ko]; }).concat(words);
     saveCustom();
-    toast('Imported ' + pendingImport.length + ' words');
+    toast('Imported ' + words.length + ' words');
     pendingImport = null;
+    deckNotes = null;
+    deckInfo = '';
     $('importText').value = '';
     $('importPreview').innerHTML = '';
     wordsTab = 'mine';
@@ -1165,12 +1209,17 @@
     $('previewImportBtn').addEventListener('click', previewImport);
     $('importFile').addEventListener('change', function () {
       var f = this.files && this.files[0];
+      this.value = '';
       if (!f) return;
+      if (/\.(apkg|colpkg)$/i.test(f.name)) { readDeckFile(f); return; }
+      deckNotes = null;
+      deckInfo = '';
       var reader = new FileReader();
       reader.onload = function () { $('importText').value = String(reader.result || ''); previewImport(); };
       reader.readAsText(f, 'utf-8');
-      this.value = '';
     });
+    $('importLevel').addEventListener('change', function () { if (pendingImport) previewImport(); });
+    $('importCat').addEventListener('change', function () { if (pendingImport) previewImport(); });
     delegate($('importPreview'), '#confirmImportBtn', 'click', confirmImport);
     wordListActions($('importPreview'));
     $('exportBtn').addEventListener('click', exportCsv);

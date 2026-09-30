@@ -187,7 +187,7 @@
       </div>
 
       <div class="tab" id="tab-import" hidden>
-        <p class="small">Paste a list or choose a file (.csv, .tsv, .txt, .json). One word per line:</p>
+        <p class="small">Paste a list, or choose a file: an Anki deck (.apkg), an Anki text export, or a CSV/TXT/JSON word list (for example from Duoninja, Quizlet or a spreadsheet). For typed lists, put one word per line:</p>
         <pre class="format">korean, english, level, topics, Korean definition, example
 사과, apple, 1, food, 빨갛고 둥근 과일, 아침에 {사과}를 먹었어요.
 공항 - airport
@@ -200,11 +200,14 @@
             <li>Separate several topics with <code>;</code>. New topic names become new topics.</li>
             <li>Spaces inside a Korean word are removed (생일 파티 → 생일파티). Words need 2–8 syllables.</li>
             <li>JSON: an array of objects like <code>{"korean":"사과","english":"apple","level":1}</code>.</li>
+            <li><b>Anki:</b> choose the deck’s <code>.apkg</code> file (AnkiWeb download or <i>File → Export → Anki Deck Package</i>), or a <i>Notes in Plain Text</i> export. The app finds the Korean and English fields on each card and uses longer Korean fields as example sentences.</li>
+            <li><b>Duolingo / Duoninja:</b> export your word list as CSV and choose it here. Header rows like <code>Word, Translation</code> are recognized.</li>
+            <li>Words that are already built in keep their level and clues. Cards with full sentences or one-syllable words are skipped.</li>
           </ul>
         </details>
         <textarea id="importText" rows="8" placeholder="Paste words here…" lang="ko"></textarea>
         <div class="import-row">
-          <label class="btn file-btn">Choose file<input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,text/*,application/json" hidden></label>
+          <label class="btn file-btn">Choose file<input type="file" id="importFile" accept=".apkg,.colpkg,.csv,.tsv,.txt,.json,text/*,application/json,application/zip,application/octet-stream" hidden></label>
           <label>Default level <select id="importLevel"></select></label>
           <label>Default topic <select id="importCat"></select></label>
         </div>
@@ -280,6 +283,7 @@
   <script src="js/wordbank.js"></script>
   <script src="js/generator.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/anki.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
