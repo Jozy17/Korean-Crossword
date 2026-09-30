@@ -3,9 +3,11 @@
 (function (root) {
   var hangul = root.KC && root.KC.hangul;
   var data = root.KC && root.KC.data;
+  var duolingo = root.KC && root.KC.duolingo;
   if (typeof module !== 'undefined' && module.exports) {
     hangul = require('./hangul.js');
     data = require('./data/words.js');
+    duolingo = require('./data/duolingo.js');
   }
 
   var MIN_LEN = 2;
@@ -36,7 +38,31 @@
         });
       });
     });
+    if (duolingo) addDuolingo(out);
     return out;
+  }
+
+  // Your Duolingo course words: tag the ones we already have, add the rest (English clues only).
+  function addDuolingo(out) {
+    var tag = duolingo.tag;
+    var byKo = {};
+    out.forEach(function (w) { byKo[w.ko] = w; });
+    duolingo.known.split(/\s+/).forEach(function (ko) {
+      if (byKo[ko] && byKo[ko].cats.indexOf(tag) < 0) byKo[ko].cats.push(tag);
+    });
+    duolingo.words.split('\n').forEach(function (line) {
+      line = line.trim();
+      if (!line) return;
+      var p = line.split('|');
+      var ko = p[0].trim();
+      if (byKo[ko]) {
+        if (byKo[ko].cats.indexOf(tag) < 0) byKo[ko].cats.push(tag);
+        return;
+      }
+      var w = { ko: ko, en: p[1].trim(), level: Number(p[2]) || 1, cats: splitCats(p[3]).concat(tag), def: '', ex: '', custom: false, source: tag };
+      byKo[ko] = w;
+      out.push(w);
+    });
   }
 
   // Replace the {marked} part of an example sentence with a blank.

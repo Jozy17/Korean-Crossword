@@ -19,7 +19,7 @@ test('choseong hint', () => {
 });
 
 test('built-in word bank is well formed', () => {
-  const words = WB.parseBuiltin();
+  const words = WB.parseBuiltin().filter(w => w.source !== 'duolingo');
   const cats = new Set(DATA.CATEGORIES.map(c => c.id));
   const seen = new Set();
   assert.ok(words.length > 700);
@@ -94,4 +94,25 @@ test('generator builds valid connected grids', () => {
       }
     }
   }
+});
+
+test('Duolingo words load as their own topic', () => {
+  const words = WB.parseBuiltin();
+  const cats = new Set(DATA.CATEGORIES.map(c => c.id));
+  const seen = new Set();
+  for (const w of words) {
+    assert.ok(!seen.has(w.ko), 'duplicate ' + w.ko);
+    seen.add(w.ko);
+  }
+  const duo = words.filter(w => w.cats.includes('duolingo'));
+  assert.ok(duo.length > 2000);
+  for (const w of duo) {
+    assert.ok(H.isHangulWord(w.ko) && w.ko.length >= 2 && w.ko.length <= 8, 'bad word ' + w.ko);
+    assert.ok([1, 2, 3].includes(w.level), 'bad level ' + w.ko);
+    assert.ok(w.en && !/n't\b|let's/i.test(w.en), 'messy clue for ' + w.ko + ': ' + w.en);
+    for (const c of w.cats) assert.ok(cats.has(c), 'unknown category ' + c);
+  }
+  // Words that were already built in keep their Korean clues and gain the topic.
+  const apple = words.find(w => w.ko === '사과');
+  assert.ok(apple.def && apple.cats.includes('duolingo') && apple.cats.includes('food'));
 });

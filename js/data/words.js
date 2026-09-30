@@ -26,7 +26,8 @@
     { id: 'shopping', ko: '쇼핑·돈', en: 'Shopping & money', icon: '🛍️' },
     { id: 'work', ko: '학교·일', en: 'School & work', icon: '📚' },
     { id: 'feelings', ko: '감정', en: 'Feelings', icon: '😊' },
-    { id: 'society', ko: '사회·문화', en: 'Society & culture', icon: '🏛️' }
+    { id: 'society', ko: '사회·문화', en: 'Society & culture', icon: '🏛️' },
+    { id: 'duolingo', ko: '듀오링고', en: 'My Duolingo words', icon: '🦉' }
   ];
 
   var LEVELS = [

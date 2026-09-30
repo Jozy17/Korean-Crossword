@@ -8,7 +8,7 @@ A Korean vocabulary crossword game for phones and computers. Every square holds 
   - 초급 Beginner: TOPIK I (1–2)
   - 중급 Intermediate: TOPIK II (3–4)
   - 고급 Advanced: TOPIK II (5–6)
-- **14 topics**: food, colors, things to do, places, people & family, body & health, weather & nature, time, transport, home, shopping & money, school & work, feelings, society & culture. Topics you create with your own words show up too.
+- **15 topics**, including **🦉 My Duolingo words** (about 2,170 words from my Duolingo course) and: food, colors, things to do, places, people & family, body & health, weather & nature, time, transport, home, shopping & money, school & work, feelings, society & culture. Topics you create with your own words show up too.
 - **Clues in English or Korean.** Switch all clues with the EN/한 toggle, or flip one clue at a time. Korean clues are a mix of short definitions (뜻풀이) and fill-in-the-blank sentences (예문). You can choose one style in Settings.
 - **Hints:** 초성 hint (initial consonants such as ㅂㅂㅂ), reveal one syllable, check word, reveal word, check all.
 - **Audio:** the browser's Korean voice reads solved words and Korean clues aloud.
@@ -75,6 +75,11 @@ Everything you add is stored in your browser (localStorage) on that device. Use 
 
 `js/data/words.js` has about 750 words, each with an English meaning, a Korean definition and an example sentence. The beginner and intermediate words come mostly from the NIKL learner list. Advanced words also include common TOPIK II exam vocabulary that isn't on the 2003 list. The English meanings, definitions and example sentences were written for this project. Please report any mistakes.
 
+`js/data/duolingo.js` holds the words from my Duolingo Korean course (Duoninja export, Sept 2026):
+- 482 were already in the main bank, so they just gained the 🦉 topic and keep their Korean clues.
+- About 1,690 new ones have a cleaned-up English clue, a level and a topic, but no Korean clue yet. In 한 mode those clues fall back to English.
+- Grammar endings (었습니다, 는데…), particles, character names, adjective forms (예쁜, 싼) and one-syllable words were left out.
+
 To add words to the built-in bank, add lines to the right level block:
 
 ```
@@ -90,6 +95,7 @@ npm test   # romanization, word bank, list and Anki import, grid generator
 | File | Purpose |
 | --- | --- |
 | `js/data/words.js` | Built-in word bank, topics, levels |
+| `js/data/duolingo.js` | Duolingo course words (🦉 topic) |
 | `js/hangul.js` | Syllable helpers, 초성, romanization |
 | `js/wordbank.js` | Word parsing, list import/export |
 | `js/anki.js` | Reads Anki `.apkg` / `.colpkg` decks |
