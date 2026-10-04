@@ -37,7 +37,8 @@
   var builtin = WB.parseBuiltin();
   var game = store.load('game', null);
   var input = null; // answer <input>
-  var snapshot = null; // cell values of the selected word when it was selected
+  var snapshot = null; // values of the selected word's open squares when it was selected
+  var openSlots = []; // squares of the selected word that typing fills (fixed squares are skipped)
   var timerId = null;
 
   // ---------- helpers ----------
@@ -381,14 +382,13 @@
     var selCells = {};
     var cursorKey = null;
     if (sel) {
-      var cells = cellsOf(sel);
-      cells.forEach(function (p) { selCells[p[0] + ',' + p[1]] = true; });
+      cellsOf(sel).forEach(function (p) { selCells[p[0] + ',' + p[1]] = true; });
       var typed = input ? Array.from(input.value).length : 0;
-      if (typed < cells.length) cursorKey = cells[typed][0] + ',' + cells[typed][1];
+      if (typed < openSlots.length) cursorKey = openSlots[typed][0] + ',' + openSlots[typed][1];
     }
     var correctCells = {};
     game.words.forEach(function (w) {
-      if (w.solved && (settings.autoCheck || w.checked) && isWordCorrect(w)) {
+      if (isShownCorrect(w)) {
         cellsOf(w).forEach(function (p) { correctCells[p[0] + ',' + p[1]] = true; });
       }
     });
@@ -447,25 +447,38 @@
     $('langKo').setAttribute('aria-pressed', String(settings.hintLang === 'ko'));
   }
 
-  function prefixOf(w) {
-    var out = '';
-    var cells = cellsOf(w);
-    for (var i = 0; i < cells.length; i++) {
-      var v = game.fill[cells[i][0]][cells[i][1]];
-      if (!v) break;
-      out += v;
-    }
-    return out;
+  // A word shows green once it's right (instantly, or after "Check" when auto-check is off).
+  function isShownCorrect(w) {
+    return isWordCorrect(w) && (settings.autoCheck || w.checked);
+  }
+
+  // Squares the current word can't change: revealed ones and ones that belong
+  // to a finished (green) crossing word. Typing skips over these.
+  function isFixedFor(i, r, c) {
+    if (game.locked[r][c]) return true;
+    return wordsAt(r, c).some(function (j) { return j !== i && isShownCorrect(game.words[j]); });
   }
 
   function selectWord(i, focus) {
     if (!game.words[i]) i = 0;
     game.sel = i;
     var w = game.words[i];
-    var pre = prefixOf(w);
+    // The answer box holds only the open squares, frozen while this word is selected.
+    openSlots = cellsOf(w).filter(function (p) { return !isFixedFor(i, p[0], p[1]); });
+    var pre = '';
+    for (var k = 0; k < openSlots.length; k++) {
+      var v = game.fill[openSlots[k][0]][openSlots[k][1]];
+      if (!v) break;
+      pre += v;
+    }
     var preLen = Array.from(pre).length;
-    snapshot = cellsOf(w).map(function (p, k) { return k < preLen ? '' : game.fill[p[0]][p[1]]; });
+    snapshot = openSlots.map(function (p, k) { return k < preLen ? '' : game.fill[p[0]][p[1]]; });
     input.value = pre;
+    input.maxLength = Math.max(openSlots.length, 1);
+    var fixed = w.len - openSlots.length;
+    input.placeholder = !openSlots.length ? '완성! · all squares filled'
+      : fixed ? '빈칸 ' + openSlots.length + '개만 · type the ' + openSlots.length + ' empty square' + (openSlots.length === 1 ? '' : 's')
+      : '여기에 입력 · type here';
     renderClueBar();
     renderClueLists();
     refreshCells();
@@ -487,13 +500,19 @@
     selectWord(next, true);
   }
 
-  function onInput() {
+  function onInput(e) {
     var w = game.words[game.sel];
     if (!w || game.done) return;
     var chars = Array.from(H.normalize(input.value).replace(/\s+/g, ''));
-    var cells = cellsOf(w);
+    var composing = e && (e.isComposing || e.type === 'compositionupdate');
+    // Never hold more syllables than there are open squares. Trim once the
+    // keyboard has finished composing so the Korean IME isn't interrupted.
+    if (chars.length > openSlots.length && !composing) {
+      chars = chars.slice(0, openSlots.length);
+      input.value = chars.join('');
+    }
     var touched = {};
-    cells.forEach(function (p, k) {
+    openSlots.forEach(function (p, k) {
       var r = p[0], c = p[1];
       if (game.locked[r][c]) return;
       var v = k < chars.length ? chars[k] : snapshot[k];

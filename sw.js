@@ -1,5 +1,5 @@
 /* Offline cache so the app works without a connection once installed. */
-var CACHE = 'kc-v3';
+var CACHE = 'kc-v4';
 var FILES = [
   './',
   'index.html',
