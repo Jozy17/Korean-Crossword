@@ -315,3 +315,30 @@ dialog h2 { margin: 0 0 12px; }
   opacity: 0; pointer-events: none; transition: all .2s ease; z-index: 50; max-width: calc(100% - 32px); text-align: center;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* Game mode picker */
+.segmented.two { grid-template-columns: repeat(2, 1fr); }
+.mode-hint { margin: 6px 2px 0; }
+
+/* 한 글자 (one-block) game */
+.blocks-mode .grid-wrap { display: block; }
+.blocks-mode .grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+@media (min-width: 560px) { .blocks-mode .grid { grid-template-columns: 1fr 1fr; } }
+.tile {
+  display: flex; align-items: center; gap: 12px; padding: 6px 10px 6px 6px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; min-height: 64px;
+}
+.tile .cell { width: 52px; height: 52px; flex: none; font-size: 26px; }
+.tile-clue { flex: 1; font-size: .95rem; line-height: 1.3; }
+.tile.active { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); }
+.tile.solved .tile-clue { color: var(--muted); }
+.blocks-mode .clue-lists, .blocks-mode #revealLetter { display: none; }
+.blocks-mode .tools { grid-template-columns: repeat(4, 1fr); }
+/* In the 한 글자 game the clue and answer box come first, then the list of blocks. */
+#screen-game.blocks-mode { display: flex; flex-direction: column; }
+.blocks-mode .game-head { order: 0; }
+.blocks-mode .clue-bar { order: 1; }
+.blocks-mode .answer-row { order: 2; }
+.blocks-mode .tools { order: 3; }
+.blocks-mode .grid-wrap { order: 4; margin-top: 12px; }
+.blocks-mode .game-footer { order: 5; }

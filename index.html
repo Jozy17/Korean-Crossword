@@ -37,6 +37,13 @@
         <button class="btn primary" id="continueBtn">Continue</button>
       </div>
 
+      <h2 class="section-title">Game <span class="ko">게임</span></h2>
+      <div class="segmented two" id="modePicker">
+        <button data-mode="crossword">크로스워드<small>Crossword</small></button>
+        <button data-mode="blocks">한 글자<small>One-block words</small></button>
+      </div>
+      <p class="muted small mode-hint" id="modeHint"></p>
+
       <h2 class="section-title">Level <span class="ko">난이도</span></h2>
       <div class="levels" id="levelPicker"></div>
 
@@ -130,7 +137,10 @@
       <div class="stat-tiles" id="statTiles"></div>
       <h2 class="section-title">Words to review <span class="ko">복습할 단어</span></h2>
       <p class="muted small">Words you revealed or got wrong land here. Solve one without help twice and it’s cleared.</p>
-      <button class="btn primary" id="practiceMissedBtn">Practice these words</button>
+      <div class="row-actions">
+        <button class="btn primary" id="practiceMissedBtn">Practice in a crossword</button>
+        <button class="btn" id="practiceBlocksBtn" hidden>Practice one-block words</button>
+      </div>
       <ul class="word-list" id="missedList"></ul>
       <h2 class="section-title">Recently solved <span class="ko">최근 푼 단어</span></h2>
       <ul class="word-list" id="recentList"></ul>
@@ -198,7 +208,7 @@
             <li>Only the Korean word and English meaning are required. Commas, tabs, <code>|</code>, or <code>word - meaning</code> all work.</li>
             <li>Level can be <code>1/2/3</code>, <code>초급/중급/고급</code>, <code>A/B/C</code>, or <code>TOPIK 1–6</code>.</li>
             <li>Separate several topics with <code>;</code>. New topic names become new topics.</li>
-            <li>Spaces inside a Korean word are removed (생일 파티 → 생일파티). Words need 2–8 syllables.</li>
+            <li>Spaces inside a Korean word are removed (생일 파티 → 생일파티). Words can be up to 8 syllables; one-syllable words (책, 밥…) go to the 한 글자 game.</li>
             <li>JSON: an array of objects like <code>{"korean":"사과","english":"apple","level":1}</code>.</li>
             <li><b>Anki:</b> choose the deck’s <code>.apkg</code> file (AnkiWeb download or <i>File → Export → Anki Deck Package</i>), or a <i>Notes in Plain Text</i> export. The app finds the Korean and English fields on each card and uses longer Korean fields as example sentences.</li>
             <li><b>Duolingo / Duoninja:</b> export your word list as CSV and choose it here. Header rows like <code>Word, Translation</code> are recognized.</li>
@@ -281,6 +291,7 @@
   <script src="js/hangul.js"></script>
   <script src="js/data/words.js"></script>
   <script src="js/data/duolingo.js"></script>
+  <script src="js/data/single.js"></script>
   <script src="js/wordbank.js"></script>
   <script src="js/generator.js"></script>
   <script src="js/storage.js"></script>

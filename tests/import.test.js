@@ -14,12 +14,10 @@ test('reads an older Anki deck (collection.anki2) using field names', async () =
   assert.deepStrictEqual(res.words.map(w => [w.ko, w.en, w.ex]), [
     ['사과', 'apple', '아침에 {사과}를 먹었어요.'],
     ['먹다', 'to eat; to have (a meal)', '저는 밥을 {먹}어요.'],
-    ['도서관', 'library', '책을 빌리러 {도서관}에 가요.']
+    ['도서관', 'library', '책을 빌리러 {도서관}에 가요.'],
+    ['책', 'book', '']
   ]);
-  assert.deepStrictEqual(res.skipped.map(s => s.reason), [
-    'Needs at least 2 syllables to fit a crossword',
-    'Looks like a sentence, not a word'
-  ]);
+  assert.deepStrictEqual(res.skipped.map(s => s.reason), ['Looks like a sentence, not a word']);
 });
 
 test('reads a new Anki deck (zstd collection.anki21b) with English on the front', async () => {

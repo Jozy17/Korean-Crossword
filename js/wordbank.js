@@ -4,13 +4,17 @@
   var hangul = root.KC && root.KC.hangul;
   var data = root.KC && root.KC.data;
   var duolingo = root.KC && root.KC.duolingo;
+  var single = root.KC && root.KC.single;
   if (typeof module !== 'undefined' && module.exports) {
     hangul = require('./hangul.js');
     data = require('./data/words.js');
     duolingo = require('./data/duolingo.js');
+    single = require('./data/single.js');
   }
 
-  var MIN_LEN = 2;
+  // One-syllable words are kept for the 한 글자 game; the crossword uses 2+ syllables.
+  var MIN_LEN = 1;
+  var CROSSWORD_MIN = 2;
   var MAX_LEN = 8;
 
   function splitCats(str) {
@@ -22,8 +26,11 @@
 
   function parseBuiltin() {
     var out = [];
-    Object.keys(data.RAW).forEach(function (lvl) {
-      data.RAW[lvl].split('\n').forEach(function (line) {
+    var sources = [data.RAW];
+    if (single) sources.push(single.RAW);
+    sources.forEach(function (raw) {
+     Object.keys(raw).forEach(function (lvl) {
+      raw[lvl].split('\n').forEach(function (line) {
         line = line.trim();
         if (!line) return;
         var p = line.split('|');
@@ -37,8 +44,16 @@
           custom: false
         });
       });
+     });
     });
     if (duolingo) addDuolingo(out);
+    if (single && duolingo) {
+      var byKo = {};
+      out.forEach(function (w) { byKo[w.ko] = w; });
+      single.DUO.split(/\s+/).forEach(function (ko) {
+        if (byKo[ko] && byKo[ko].cats.indexOf(duolingo.tag) < 0) byKo[ko].cats.push(duolingo.tag);
+      });
+    }
     return out;
   }
 
@@ -400,7 +415,6 @@
       var tokens = String(rec.ko).trim().split(/\s+/);
       if (tokens.length > 2 || (tokens.length === 2 && /(요|니다|니까|세요)$/.test(ko))) { skipped.push({ line: r.line, text: r.src, reason: 'Looks like a sentence, not a word' }); return; }
       if (!hangul.isHangulWord(ko)) { skipped.push({ line: r.line, text: r.src, reason: 'Korean word must be complete Hangul syllables' }); return; }
-      if (ko.length < MIN_LEN) { skipped.push({ line: r.line, text: r.src, reason: 'Needs at least 2 syllables to fit a crossword' }); return; }
       if (ko.length > MAX_LEN) { skipped.push({ line: r.line, text: r.src, reason: 'Longer than ' + MAX_LEN + ' syllables' }); return; }
       var en = String(rec.en || '').trim();
       if (!en) { skipped.push({ line: r.line, text: r.src, reason: 'Missing English meaning' }); return; }
@@ -461,6 +475,7 @@
     cleanKorean: cleanKorean,
     toCsv: toCsv,
     MIN_LEN: MIN_LEN,
+    CROSSWORD_MIN: CROSSWORD_MIN,
     MAX_LEN: MAX_LEN
   };
   root.KC = root.KC || {};

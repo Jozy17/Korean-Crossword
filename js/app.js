@@ -13,9 +13,12 @@
     medium: { target: 9, maxSize: 9 },
     large: { target: 12, maxSize: 11 }
   };
+  // 한 글자 game: how many separate one-syllable blocks per puzzle.
+  var BLOCK_SIZES = { small: 8, medium: 12, large: 16 };
   var REVIEW_CAT = '__review';
 
   var DEFAULT_SETTINGS = {
+    mode: 'crossword', // or 'blocks' (한 글자: one-syllable words, not connected)
     level: 1,
     category: 'all',
     size: 'medium',
@@ -35,7 +38,9 @@
   progress.stats = Object.assign({ puzzles: 0, words: 0, best: {}, streakDays: 0, lastDay: null }, progress.stats);
 
   var builtin = WB.parseBuiltin();
-  var game = store.load('game', null);
+  // Each game mode keeps its own puzzle in progress.
+  function gameKey(mode) { return mode === 'blocks' ? 'game.blocks' : 'game'; }
+  var game = store.load(gameKey(settings.mode), null);
   var input = null; // answer <input>
   var snapshot = null; // values of the selected word's open squares when it was selected
   var openSlots = []; // squares of the selected word that typing fills (fixed squares are skipped)
@@ -54,7 +59,7 @@
   var saveGameTimer = null;
   function saveGame() {
     clearTimeout(saveGameTimer);
-    saveGameTimer = setTimeout(function () { store.save('game', game); }, 250);
+    saveGameTimer = setTimeout(function () { store.save(gameKey(game.mode), game); }, 250);
   }
 
   var toastTimer = null;
@@ -165,8 +170,15 @@
   }
 
   // ---------- home ----------
-  function poolFor(level, category, includeEasier) {
-    var words = allWords();
+  // Crossword answers need 2+ syllables; the 한 글자 game uses exactly one.
+  function fitsMode(w, mode) {
+    var n = Array.from(w.ko).length;
+    return mode === 'blocks' ? n === 1 : n >= WB.CROSSWORD_MIN;
+  }
+
+  function poolFor(level, category, includeEasier, mode) {
+    mode = mode || settings.mode;
+    var words = allWords().filter(function (w) { return fitsMode(w, mode); });
     if (category === REVIEW_CAT) {
       var keys = {};
       missedKeys().forEach(function (k) { keys[k] = true; });
@@ -181,6 +193,16 @@
   }
 
   function renderHome() {
+    var blocks = settings.mode === 'blocks';
+    Array.prototype.forEach.call($('modePicker').children, function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.mode === settings.mode));
+    });
+    $('modeHint').textContent = blocks
+      ? 'One-syllable words (책, 밥, 눈…) in separate blocks. Read each clue and fill in the syllable.'
+      : 'Words of two or more syllables that cross where they share a syllable.';
+    Array.prototype.forEach.call($('sizePicker').children, function (b) {
+      b.querySelector('small').textContent = (blocks ? BLOCK_SIZES[b.dataset.size] : SIZES[b.dataset.size].target) + (blocks ? ' blocks' : ' words');
+    });
     var lp = $('levelPicker');
     lp.innerHTML = DATA.LEVELS.map(function (l) {
       return '<button class="level-card" data-level="' + l.id + '" aria-pressed="' + (settings.level === l.id) + '">' +
@@ -195,7 +217,7 @@
       return '<button class="chip" data-cat="' + esc(c.id) + '" aria-pressed="' + (settings.category === c.id) + '"' +
         (n < 2 ? ' disabled' : '') + '>' + c.icon + ' ' + esc(label) + ' <small>' + n + '</small></button>';
     }).join('');
-    var nMissed = missedKeys().length;
+    var nMissed = poolFor(settings.level, REVIEW_CAT).length;
     html += '<button class="chip" data-cat="' + REVIEW_CAT + '" aria-pressed="' + (settings.category === REVIEW_CAT) + '"' +
       (nMissed < 2 ? ' disabled' : '') + '>⭐ 복습 · Review <small>' + nMissed + '</small></button>';
     $('categoryPicker').innerHTML = html;
@@ -209,11 +231,12 @@
     if (game && !game.done) {
       $('continueCard').hidden = false;
       var filled = countFilled();
-      $('continueInfo').textContent = levelInfo(game.level).ko + ' · ' + catLabel(game.category) + ' · ' + filled + '% filled';
+      $('continueInfo').textContent = (game.mode === 'blocks' ? '한 글자 · ' : '') + levelInfo(game.level).ko + ' · ' + catLabel(game.category) + ' · ' + filled + '% filled';
     } else {
       $('continueCard').hidden = true;
     }
 
+    nMissed = missedKeys().length;
     $('reviewCount').textContent = nMissed ? nMissed + ' word' + (nMissed === 1 ? '' : 's') + ' to practice' : 'Words to practice';
     var st = progress.stats;
     $('statsLine').textContent = st.puzzles
@@ -243,19 +266,30 @@
     return weight;
   }
 
+  function koClueFor(e) {
+    if (e.ex && !e.def) return 'ex';
+    if (e.ex && e.def) {
+      if (settings.koStyle === 'ex') return 'ex';
+      if (settings.koStyle === 'mix') return Math.random() < 0.5 ? 'ex' : 'def';
+    }
+    return 'def';
+  }
+
   function newGame(opts) {
     opts = opts || {};
+    var mode = opts.mode || settings.mode;
+    if (mode === 'blocks') return newBlocksGame(opts);
     var level = opts.level || settings.level;
     var category = opts.category || settings.category;
     var size = SIZES[settings.size] || SIZES.medium;
-    var theme = poolFor(level, category, settings.includeEasier);
+    var theme = poolFor(level, category, settings.includeEasier, 'crossword');
     if (theme.length < 2) {
       toast('Not enough words for this topic yet');
       return false;
     }
     var maxLevel = level;
     if (category === REVIEW_CAT) maxLevel = Math.max.apply(null, theme.map(function (w) { return w.level; }));
-    var fillers = category === 'all' ? [] : allWords().filter(function (w) { return w.level <= maxLevel; });
+    var fillers = category === 'all' ? [] : allWords().filter(function (w) { return w.level <= maxLevel && fitsMode(w, 'crossword'); });
     var weigh = function (w) { return Object.assign({}, w, { weight: weightFor(w, level) }); };
     var puzzle = KC.generator.generate(theme.map(weigh), fillers.map(weigh), { target: size.target, maxSize: size.maxSize });
     if (!puzzle || puzzle.words.length < 2) {
@@ -265,6 +299,7 @@
     var solution = puzzle.grid.map(function (row) { return row.map(function (c) { return c ? c.ch : null; }); });
     game = {
       id: Date.now(),
+      mode: 'crossword',
       level: level,
       category: category,
       size: settings.size,
@@ -276,12 +311,7 @@
       wrong: solution.map(function (row) { return row.map(function () { return false; }); }),
       words: puzzle.words.map(function (w) {
         var e = w.entry;
-        var koClue = 'def';
-        if (e.ex && !e.def) koClue = 'ex';
-        else if (e.ex && e.def) {
-          if (settings.koStyle === 'ex') koClue = 'ex';
-          else if (settings.koStyle === 'mix') koClue = Math.random() < 0.5 ? 'ex' : 'def';
-        }
+        var koClue = koClueFor(e);
         return {
           num: w.num, dir: w.dir, r: w.r, c: w.c, len: w.len, answer: w.answer, bridge: w.bridge,
           entry: { ko: e.ko, en: e.en, level: e.level, cats: e.cats, def: e.def, ex: e.ex, custom: !!e.custom },
@@ -296,7 +326,56 @@
       elapsed: 0,
       done: false
     };
-    store.save('game', game);
+    store.save(gameKey(game.mode), game);
+    startGameScreen();
+    return true;
+  }
+
+  // 한 글자 game: separate one-syllable blocks. Each word sits in its own row of a
+  // one-column solution grid, so checking, hints and scoring work as in the crossword.
+  function newBlocksGame(opts) {
+    var level = opts.level || settings.level;
+    var category = opts.category || settings.category;
+    var pool = poolFor(level, category, settings.includeEasier, 'blocks');
+    if (pool.length < 2) {
+      toast('Not enough one-syllable words for this topic yet');
+      return false;
+    }
+    var n = Math.min(BLOCK_SIZES[settings.size] || BLOCK_SIZES.medium, pool.length);
+    // Weighted pick: unseen and missed words come up more often.
+    var picked = pool
+      .map(function (w) { return { w: w, k: Math.pow(Math.random(), 1 / Math.max(0.01, weightFor(w, level))) }; })
+      .sort(function (a, b) { return b.k - a.k; })
+      .slice(0, n)
+      .map(function (x) { return x.w; });
+    game = {
+      id: Date.now(),
+      mode: 'blocks',
+      level: level,
+      category: category,
+      size: settings.size,
+      rows: picked.length,
+      cols: 1,
+      solution: picked.map(function (w) { return [w.ko]; }),
+      fill: picked.map(function () { return ['']; }),
+      locked: picked.map(function () { return [false]; }),
+      wrong: picked.map(function () { return [false]; }),
+      words: picked.map(function (e, i) {
+        return {
+          num: i + 1, dir: 'across', r: i, c: 0, len: 1, answer: e.ko, bridge: false,
+          entry: { ko: e.ko, en: e.en, level: e.level, cats: e.cats, def: e.def, ex: e.ex, custom: !!e.custom },
+          koClue: koClueFor(e),
+          flipped: false,
+          hints: { cho: false, reveals: 0, wrongChecks: 0, revealedWord: false },
+          solved: false,
+          checked: false
+        };
+      }),
+      sel: 0,
+      elapsed: 0,
+      done: false
+    };
+    store.save(gameKey('blocks'), game);
     startGameScreen();
     return true;
   }
@@ -335,7 +414,9 @@
   function startGameScreen() {
     show('game');
     var lv = levelInfo(game.level);
-    $('gameTitle').textContent = lv.ko + ' ' + lv.en + ' · ' + catLabel(game.category);
+    var blocks = game.mode === 'blocks';
+    $('screen-game').classList.toggle('blocks-mode', blocks);
+    $('gameTitle').textContent = (blocks ? '한 글자 · ' : '') + lv.ko + ' ' + lv.en + ' · ' + catLabel(game.category);
     renderGrid();
     renderClueLists();
     selectWord(game.sel || 0, false);
@@ -354,6 +435,18 @@
 
   function renderGrid() {
     var g = $('grid');
+    if (game.mode === 'blocks') {
+      // One tile per word: a block to fill and its clue beside it.
+      g.removeAttribute('style');
+      g.innerHTML = game.words.map(function (w, i) {
+        return '<div class="tile" data-i="' + i + '">' +
+          '<button class="cell" data-r="' + w.r + '" data-c="0" aria-label="Block ' + w.num + '">' +
+          '<span class="num">' + w.num + '</span><span class="ch"></span></button>' +
+          '<span class="tile-clue"></span></div>';
+      }).join('');
+      refreshCells();
+      return;
+    }
     var size = cellSize();
     g.style.gridTemplateColumns = 'repeat(' + game.cols + ', ' + size + 'px)';
     g.style.gridAutoRows = size + 'px';
@@ -414,6 +507,19 @@
   }
 
   function renderClueLists() {
+    if (game.mode === 'blocks') {
+      Array.prototype.forEach.call($('grid').querySelectorAll('.tile'), function (tile) {
+        var i = +tile.dataset.i;
+        var w = game.words[i];
+        var ct = clueText(w);
+        var el = tile.querySelector('.tile-clue');
+        el.textContent = ct.text;
+        el.lang = ct.lang;
+        tile.classList.toggle('active', i === game.sel);
+        tile.classList.toggle('solved', isShownCorrect(w));
+      });
+      return;
+    }
     ['across', 'down'].forEach(function (dir) {
       var list = $(dir === 'across' ? 'acrossList' : 'downList');
       list.innerHTML = game.words.map(function (w, i) {
@@ -432,7 +538,8 @@
     var w = game.words[game.sel];
     if (!w) return;
     var ct = clueText(w);
-    $('clueLabel').textContent = w.num + ' ' + (w.dir === 'across' ? '가로 Across' : '세로 Down') + ' · ' + w.len + '글자' +
+    var where = game.mode === 'blocks' ? w.num + ' / ' + game.words.length : w.num + ' ' + (w.dir === 'across' ? '가로 Across' : '세로 Down');
+    $('clueLabel').textContent = where + ' · ' + w.len + '글자' +
       (ct.note ? ' · ' + ct.note : '');
     $('clueText').textContent = ct.text;
     $('clueText').lang = ct.lang;
@@ -691,13 +798,13 @@
     refreshCells();
     var score = liveScore();
     game.score = score;
-    store.save('game', game);
+    store.save(gameKey(game.mode), game);
 
     // Progress bookkeeping.
     var st = progress.stats;
     st.puzzles++;
     st.words += game.words.length;
-    var bestKey = game.level + '-' + game.size;
+    var bestKey = (game.mode === 'blocks' ? 'b' : '') + game.level + '-' + game.size;
     if (!st.best[bestKey] || game.elapsed < st.best[bestKey]) st.best[bestKey] = game.elapsed;
     var d = today();
     if (st.lastDay !== d) {
@@ -783,7 +890,9 @@
         actions: '<button data-act="unmiss" aria-label="Remove from review">✕</button>'
       });
     }).join('') : '<li class="empty">Nothing to review yet. Words you reveal or get wrong show up here.</li>';
-    $('practiceMissedBtn').disabled = missed.length < 2;
+    var nLong = missed.filter(function (k) { return fitsMode(words[k], 'crossword'); }).length;
+    $('practiceMissedBtn').disabled = nLong < 2;
+    $('practiceBlocksBtn').hidden = missed.length - nLong < 2;
 
     var recent = (progress.recent || []).filter(function (k) { return words[k]; }).slice(0, 30);
     $('recentList').innerHTML = recent.length ? recent.map(function (k) { return wordRow(words[k], {}); }).join('')
@@ -897,7 +1006,7 @@
     var en = $('fEn').value.trim();
     msg.className = 'form-msg err';
     if (!H.isHangulWord(ko)) { msg.textContent = 'The Korean word must be complete Hangul syllables (e.g. 사과).'; return; }
-    if (ko.length < WB.MIN_LEN || ko.length > WB.MAX_LEN) { msg.textContent = 'Words need 2–8 syllables to fit the crossword.'; return; }
+    if (ko.length > WB.MAX_LEN) { msg.textContent = 'Words can be up to ' + WB.MAX_LEN + ' syllables.'; return; }
     if (!en) { msg.textContent = 'Please add the English meaning.'; return; }
     var cats = formCats();
     var newCat = $('fNewCat').value.trim();
@@ -1129,6 +1238,13 @@
     delegate($('categoryPicker'), '[data-cat]', 'click', function (b) {
       settings.category = b.dataset.cat; saveSettings(); renderHome();
     });
+    delegate($('modePicker'), '[data-mode]', 'click', function (b) {
+      if (settings.mode === b.dataset.mode) return;
+      settings.mode = b.dataset.mode;
+      saveSettings();
+      game = store.load(gameKey(settings.mode), null);
+      renderHome();
+    });
     delegate($('sizePicker'), '[data-size]', 'click', function (b) {
       settings.size = b.dataset.size; saveSettings(); renderHome();
     });
@@ -1141,7 +1257,8 @@
     delegate(document.querySelector('.home-links'), '[data-go]', 'click', function (b) { show(b.dataset.go); });
 
     // Game
-    delegate($('grid'), '.cell[data-r]', 'click', function (el) { onCellTap(+el.dataset.r, +el.dataset.c); });
+    delegate($('grid'), '.cell[data-r]', 'click', function (el) { if (game.mode !== 'blocks') onCellTap(+el.dataset.r, +el.dataset.c); });
+    delegate($('grid'), '.tile[data-i]', 'click', function (el) { selectWord(+el.dataset.i, true); });
     input.addEventListener('input', onInput);
     input.addEventListener('compositionend', onInput);
     input.addEventListener('keydown', function (e) {
@@ -1182,7 +1299,7 @@
     $('restartBtn').addEventListener('click', clearGrid);
     $('newFromGameBtn').addEventListener('click', function () {
       if (!game.done && countFilled() > 0 && !confirm('Start a new puzzle? This one will be lost.')) return;
-      newGame({ level: game.level, category: game.category });
+      newGame({ level: game.level, category: game.category, mode: game.mode });
     });
 
     // Done dialog
@@ -1191,17 +1308,20 @@
     $('doneNextBtn').addEventListener('click', function () {
       $('doneDialog').close();
       var cat = game.category;
-      if (cat === REVIEW_CAT && missedKeys().length < 2) cat = settings.category === REVIEW_CAT ? 'all' : settings.category;
-      newGame({ level: game.level, category: cat });
+      if (cat === REVIEW_CAT && poolFor(game.level, REVIEW_CAT, false, game.mode).length < 2) cat = settings.category === REVIEW_CAT ? 'all' : settings.category;
+      newGame({ level: game.level, category: cat, mode: game.mode });
     });
 
     // Review
     wordListActions($('missedList'));
     wordListActions($('recentList'));
-    $('practiceMissedBtn').addEventListener('click', function () {
-      var lv = Math.max.apply(null, [1].concat(allWords().filter(function (w) { return progress.missed[w.ko]; }).map(function (w) { return w.level; })));
-      newGame({ level: lv, category: REVIEW_CAT });
-    });
+    var practice = function (mode) {
+      var words = poolFor(1, REVIEW_CAT, false, mode);
+      var lv = Math.max.apply(null, [1].concat(words.map(function (w) { return w.level; })));
+      newGame({ level: lv, category: REVIEW_CAT, mode: mode });
+    };
+    $('practiceMissedBtn').addEventListener('click', function () { practice('crossword'); });
+    $('practiceBlocksBtn').addEventListener('click', function () { practice('blocks'); });
 
     // Words
     delegate(document.querySelector('.tabs'), '[data-tab]', 'click', function (b) {
@@ -1253,7 +1373,7 @@
       resizeTimer = setTimeout(function () { if (current === 'game' && game) renderGrid(); }, 150);
     });
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden && game) store.save('game', game);
+      if (document.hidden && game) store.save(gameKey(game.mode), game);
     });
   }
 

@@ -20,6 +20,15 @@ A Korean vocabulary crossword game for phones and computers. Every square holds 
 
 Puzzles are generated fresh every time. Words you've seen less, and words on your review list, come up more often. Korean words share syllables less often than English words share letters. So a topic puzzle may include a few **bonus** words from another topic, at the same or an easier level, to connect the grid.
 
+## 한 글자 (one-block) game
+
+Switch **Game** on the home screen to **한 글자** for one-syllable words like 책, 밥, 눈 and 꿈. These words can't go in a crossword.
+- Each puzzle is a list of separate blocks, each with its clue. You get 8, 12 or 16 blocks depending on the size.
+- Tap a block, or press Return to move to the next empty one, then type the syllable.
+- Level, topic, the EN/한 toggle, hints, score and the review list all work as in the crossword. Each game keeps its own puzzle in progress.
+- About 200 one-syllable words are in `js/data/single.js`, each with a Korean definition and an example sentence. 177 of them are also in the 🦉 Duolingo topic.
+- One-syllable words you add or import go to this game.
+
 ## Playing on an iPhone
 
 1. Host the site. The easiest way is GitHub Pages: repo **Settings → Pages → Deploy from a branch**, then pick the branch and `/ (root)`.
@@ -96,6 +105,7 @@ npm test   # romanization, word bank, list and Anki import, grid generator
 | --- | --- |
 | `js/data/words.js` | Built-in word bank, topics, levels |
 | `js/data/duolingo.js` | Duolingo course words (🦉 topic) |
+| `js/data/single.js` | One-syllable words for the 한 글자 game |
 | `js/hangul.js` | Syllable helpers, 초성, romanization |
 | `js/wordbank.js` | Word parsing, list import/export |
 | `js/anki.js` | Reads Anki `.apkg` / `.colpkg` decks |

@@ -1,5 +1,5 @@
 /* Offline cache so the app works without a connection once installed. */
-var CACHE = 'kc-v4';
+var CACHE = 'kc-v5';
 var FILES = [
   './',
   'index.html',
@@ -7,6 +7,7 @@ var FILES = [
   'js/hangul.js',
   'js/data/words.js',
   'js/data/duolingo.js',
+  'js/data/single.js',
   'js/wordbank.js',
   'js/generator.js',
   'js/storage.js',

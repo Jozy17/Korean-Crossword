@@ -26,7 +26,7 @@ test('built-in word bank is well formed', () => {
   for (const w of words) {
     assert.ok(!seen.has(w.ko), 'duplicate ' + w.ko);
     seen.add(w.ko);
-    assert.ok(H.isHangulWord(w.ko) && w.ko.length >= 2, 'bad word ' + w.ko);
+    assert.ok(H.isHangulWord(w.ko), 'bad word ' + w.ko);
     assert.ok([1, 2, 3].includes(w.level));
     assert.ok(w.en && w.def, 'missing clue ' + w.ko);
     assert.match(w.ex, /\{[^}]+\}/, 'example needs a {blank}: ' + w.ko);
@@ -44,15 +44,15 @@ test('import accepts CSV, TSV, dash lists and JSON', () => {
     '환율\texchange rate\tTOPIK 5\tshopping;Society & culture',
     '"생일 파티","birthday party, celebration",초급',
     'x, bad',
-    '사,one'
+    '책,book'
   ].join('\n');
   const res = WB.parseImport(text, { level: 2 });
-  assert.deepStrictEqual(res.words.map(w => w.ko), ['김치볶음밥', '공항', '환율', '생일파티']);
+  assert.deepStrictEqual(res.words.map(w => w.ko), ['김치볶음밥', '공항', '환율', '생일파티', '책']);
   assert.strictEqual(res.words[1].level, 2);
   assert.strictEqual(res.words[2].level, 3);
   assert.deepStrictEqual(res.words[2].cats, ['shopping', 'society']);
   assert.strictEqual(res.words[3].en, 'birthday party, celebration');
-  assert.strictEqual(res.skipped.length, 2);
+  assert.strictEqual(res.skipped.length, 1);
 
   const json = WB.parseImport(JSON.stringify([{ korean: '떡갈비', english: 'rib patties', level: 'B', example: '점심에 떡갈비를 먹었어요.' }]));
   assert.strictEqual(json.words[0].level, 2);
@@ -107,7 +107,7 @@ test('Duolingo words load as their own topic', () => {
   const duo = words.filter(w => w.cats.includes('duolingo'));
   assert.ok(duo.length > 2000);
   for (const w of duo) {
-    assert.ok(H.isHangulWord(w.ko) && w.ko.length >= 2 && w.ko.length <= 8, 'bad word ' + w.ko);
+    assert.ok(H.isHangulWord(w.ko) && w.ko.length <= 8, 'bad word ' + w.ko);
     assert.ok([1, 2, 3].includes(w.level), 'bad level ' + w.ko);
     assert.ok(w.en && !/n't\b|let's/i.test(w.en), 'messy clue for ' + w.ko + ': ' + w.en);
     for (const c of w.cats) assert.ok(cats.has(c), 'unknown category ' + c);
@@ -115,4 +115,18 @@ test('Duolingo words load as their own topic', () => {
   // Words that were already built in keep their Korean clues and gain the topic.
   const apple = words.find(w => w.ko === '사과');
   assert.ok(apple.def && apple.cats.includes('duolingo') && apple.cats.includes('food'));
+});
+
+test('one-syllable words for the 한 글자 game', () => {
+  const one = WB.parseBuiltin().filter(w => w.ko.length === 1);
+  assert.ok(one.length >= 150);
+  for (const w of one) {
+    assert.ok(w.def && w.en, 'missing clue for ' + w.ko);
+    assert.ok(!w.def.includes(w.ko), 'definition gives away ' + w.ko);
+    assert.ok(!WB.blankExample(w.ex).includes(w.ko), 'example gives away ' + w.ko);
+  }
+  assert.ok(one.find(w => w.ko === '책').cats.includes('duolingo'));
+  // The crossword generator never uses them.
+  const p = G.generate(one.concat(WB.parseBuiltin().filter(w => w.level === 1)), [], { target: 9, maxSize: 9, seed: 7 });
+  assert.ok(p.words.every(w => w.len >= 2));
 });
