@@ -86,7 +86,7 @@ Everything you add is stored in your browser (localStorage) on that device. Use 
 
 `js/data/duolingo.js` holds the words from my Duolingo Korean course (Duoninja export, Sept 2026):
 - 482 were already in the main bank, so they just gained the 🦉 topic and keep their Korean clues.
-- About 1,690 new ones have a cleaned-up English clue, a level and a topic, but no Korean clue yet. In 한 mode those clues fall back to English.
+- About 1,690 new ones have a cleaned-up English clue, a level, a topic and a Korean definition (뜻풀이) for 한 mode.
 - Grammar endings (었습니다, 는데…), particles, character names, adjective forms (예쁜, 싼) and one-syllable words were left out.
 
 To add words to the built-in bank, add lines to the right level block:

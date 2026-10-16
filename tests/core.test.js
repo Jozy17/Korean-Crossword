@@ -18,6 +18,11 @@ test('choseong hint', () => {
   assert.strictEqual(H.choseong('사과'), 'ㅅㄱ');
 });
 
+test('every built-in word has a Korean clue', () => {
+  const missing = WB.parseBuiltin().filter(w => !w.def && !w.ex).map(w => w.ko);
+  assert.deepStrictEqual(missing, []);
+});
+
 test('built-in word bank is well formed', () => {
   const words = WB.parseBuiltin().filter(w => w.source !== 'duolingo');
   const cats = new Set(DATA.CATEGORIES.map(c => c.id));
@@ -110,6 +115,8 @@ test('Duolingo words load as their own topic', () => {
     assert.ok(H.isHangulWord(w.ko) && w.ko.length <= 8, 'bad word ' + w.ko);
     assert.ok([1, 2, 3].includes(w.level), 'bad level ' + w.ko);
     assert.ok(w.en && !/n't\b|let's/i.test(w.en), 'messy clue for ' + w.ko + ': ' + w.en);
+    assert.ok(w.def || w.ex, 'no Korean clue for ' + w.ko);
+    assert.ok(!w.def.includes(w.ko), 'Korean clue gives away ' + w.ko);
     for (const c of w.cats) assert.ok(cats.has(c), 'unknown category ' + c);
   }
   // Words that were already built in keep their Korean clues and gain the topic.

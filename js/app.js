@@ -580,6 +580,11 @@
     }
     var preLen = Array.from(pre).length;
     snapshot = openSlots.map(function (p, k) { return k < preLen ? '' : game.fill[p[0]][p[1]]; });
+    // The phone's Korean keyboard keeps the last half-typed syllable in memory until
+    // something commits it. Blur first so that syllable doesn't carry over as invisible
+    // "ghost" characters into the next word's answer box.
+    var hadFocus = document.activeElement === input;
+    if (hadFocus) input.blur();
     input.value = pre;
     input.maxLength = Math.max(openSlots.length, 1);
     var fixed = w.len - openSlots.length;
@@ -589,9 +594,12 @@
     renderClueBar();
     renderClueLists();
     refreshCells();
-    if (focus) {
+    if (focus || hadFocus) {
       input.focus();
-      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* ignore */ }
+      // When you pick a word, select what's already in it: typing replaces it and one
+      // backspace clears it. (After a hint, keep the cursor at the end instead.)
+      var from = focus ? 0 : input.value.length;
+      try { input.setSelectionRange(from, input.value.length); } catch (e) { /* ignore */ }
     }
     saveGame();
   }

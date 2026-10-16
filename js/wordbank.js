@@ -74,7 +74,7 @@
         if (byKo[ko].cats.indexOf(tag) < 0) byKo[ko].cats.push(tag);
         return;
       }
-      var w = { ko: ko, en: p[1].trim(), level: Number(p[2]) || 1, cats: splitCats(p[3]).concat(tag), def: '', ex: '', custom: false, source: tag };
+      var w = { ko: ko, en: p[1].trim(), level: Number(p[2]) || 1, cats: splitCats(p[3]).concat(tag), def: (p[4] || '').trim(), ex: '', custom: false, source: tag };
       byKo[ko] = w;
       out.push(w);
     });
